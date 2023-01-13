@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 
-import bottle
-from bottle import get, post, static_file, request, route, template
-from bottle import SimpleTemplate
+import logging
+import os
 from configparser import ConfigParser
+from os import environ, path
+
+import bottle
+from bottle import SimpleTemplate
+from bottle import get, post, static_file, request, route, template
 from ldap3 import Connection, Server
 from ldap3 import SIMPLE, SUBTREE
 from ldap3.core.exceptions import LDAPBindError, LDAPConstraintViolationResult, \
     LDAPInvalidCredentialsResult, LDAPUserNameIsMandatoryError, \
     LDAPSocketOpenError, LDAPExceptionError
-import logging
-import os
-from os import environ, path
-
 
 BASE_DIR = path.dirname(__file__)
 LOG = logging.getLogger(__name__)
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
-VERSION = '2.1.0'
+VERSION = '3.0.0'
 
 
 @get('/')

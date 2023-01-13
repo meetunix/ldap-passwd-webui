@@ -1,3 +1,4 @@
 bottle >= 0.12.8
 ldap3 >= 2.0, < 3.0
 configparser; python_version < '3.3'
+waitress == 2.1.2
