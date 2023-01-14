@@ -5,6 +5,8 @@ page_title = Change your password on example.org
 host = localhost
 port = 636
 use_ssl = true
+search_user_dn = cn=readonly,ou=People,dc=example,dc=org
+search_user_password = securepassword
 base = ou=People,dc=example,dc=org
 search_filter = uid={uid}
 

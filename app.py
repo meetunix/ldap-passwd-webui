@@ -14,6 +14,8 @@ from ldap3.core.exceptions import LDAPBindError, LDAPConstraintViolationResult, 
     LDAPInvalidCredentialsResult, LDAPUserNameIsMandatoryError, \
     LDAPSocketOpenError, LDAPExceptionError
 
+from password_validator import PasswordException, PasswordValidator
+
 BASE_DIR = path.dirname(__file__)
 LOG = logging.getLogger(__name__)
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
@@ -33,10 +35,13 @@ def post_index():
         return index_tpl(username=form('username'), alerts=[('error', msg)])
 
     if form('new-password') != form('confirm-password'):
-        return error("Password doesn't match the confirmation!")
+        return error("Passwords are not the same.")
 
-    if len(form('new-password')) < 8:
-        return error("Password must be at least 8 characters long!")
+    try:
+        pv = PasswordValidator()
+        pv.validate(form('new-password'))
+    except PasswordException as e:
+        return error(str(e))
 
     try:
         change_passwords(form('username'), form('old-password'), form('new-password'))
@@ -112,7 +117,8 @@ def change_password(conf, *args):
 
 
 def change_password_ldap(conf, username, old_pass, new_pass):
-    with connect_ldap(conf) as c:
+    with connect_ldap(conf, authentication=SIMPLE, user=conf.get('search_user_dn'),
+                      password=conf.get('search_user_password')) as c:
         user_dn = find_user_dn(conf, c, username)
 
     # Note: raises LDAPUserNameIsMandatoryError when user_dn is None.
@@ -163,7 +169,6 @@ bottle.TEMPLATE_PATH = [BASE_DIR]
 # Set default attributes to pass into templates.
 SimpleTemplate.defaults = dict(CONF['html'])
 SimpleTemplate.defaults['url'] = bottle.url
-
 
 # Run bottle internal server when invoked directly (mainly for development).
 if __name__ == '__main__':
