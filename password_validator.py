@@ -3,6 +3,16 @@ import string
 from pathlib import Path
 
 
+class Singleton(type):
+    """Metaclass that makes class a singleton."""
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
 class PasswordException(Exception):
     pass
 
@@ -11,8 +21,8 @@ class PasswordValidatorException(Exception):
     pass
 
 
-class PasswordValidator:
-    def __init__(self, min_length: int = 10, max_length=48, password_list: Path = None):
+class PasswordValidator(metaclass=Singleton):
+    def __init__(self, min_length: int = 10, max_length=48, password_lists: Path = None):
 
         self.password_cap = None
         self.password_low = None
@@ -26,38 +36,40 @@ class PasswordValidator:
 
         self.min_length = min_length
         self.max_length = max_length
-        self.password_list = password_list
+        self.password_lists = password_lists
 
         self.__load_password_list()
 
     def validate(self, password: str) -> bool:
         self.password_length = len(password)
-        self.password_cap = password.capitalize()
-        self.password_low = password.lower()
 
         self.__check_length(password)
         self.__check_digits(password)
         self.__check_whitespace(password)
         self.__check_known_password(password)
-
         return True
+
+    def get_known_passwords_amount(self) -> int:
+        return len(self.known_passwords)
 
     def __load_password_list(self) -> None:
 
         self.__add_trivial_known_passwords()
 
-        if self.password_list is None:
+        if self.password_lists is None:
             return
 
-        if not self.password_list.is_file():
-            raise PasswordValidatorException(f"Password list {self.password_list} does not exists.")
+        if not self.password_lists.is_dir():
+            return
 
-        with open(self.password_list, "r") as pass_file:
-            for kp in pass_file:
-                kp = kp.strip()
-                kp2 = kp + kp
-                self.__add_known_password(kp)
-                self.__add_known_password(kp2)
+        for list_path in self.password_lists.iterdir():
+            if str(list_path).endswith('.txt') and list_path.is_file():
+                with open(list_path, "r") as pass_file:
+                    for kp in pass_file:
+                        kp = kp.strip()
+                        kp2 = kp + kp
+                        self.__add_known_password(kp)
+                        self.__add_known_password(kp2)
 
     def __add_trivial_known_passwords(self):
         for alphabet in [string.ascii_lowercase, string.ascii_lowercase[::-1]]:
@@ -69,8 +81,6 @@ class PasswordValidator:
 
     def __add_known_password(self, kp: str):
         if self.min_length <= len(kp) <= self.max_length and not self.__has_whitespace(kp):
-            self.known_passwords.add(kp.capitalize())
-            self.known_passwords.add(kp.lower())
             self.known_passwords.add(kp)
 
     def __check_length(self, password: str):
@@ -103,7 +113,7 @@ class PasswordValidator:
                 return True
         return False
 
-    def __has_to_much_digits(self,password: str) -> bool:
+    def __has_to_much_digits(self, password: str) -> bool:
 
         if len(password) > self.min_length * 2:
             return False
@@ -121,9 +131,10 @@ class PasswordValidator:
 
 if __name__ == "__main__":
     try:
-        pv = PasswordValidator()
+        pv = PasswordValidator(password_lists=Path("./wordlists"))
         password = "passwd123456"
         pv.validate(password)
+        print(f"known passwords: {pv.get_known_passwords_amount()}")
         print(password)
     except PasswordException as e:
         print(e)

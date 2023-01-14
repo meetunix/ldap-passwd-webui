@@ -4,6 +4,7 @@ import logging
 import os
 from configparser import ConfigParser
 from os import environ, path
+from pathlib import Path
 
 import bottle
 from bottle import SimpleTemplate
@@ -38,8 +39,11 @@ def post_index():
         return error("Passwords are not the same.")
 
     try:
-        pv = PasswordValidator()
+        LOG.info(f"start password validation for user {form('username')}")
+        pv = PasswordValidator(password_lists=Path("./wordlists/"))
         pv.validate(form('new-password'))
+        LOG.info(f"password was successfully validated fir user {form('username')}")
+
     except PasswordException as e:
         return error(str(e))
 
@@ -139,14 +143,12 @@ def change_password_ad(conf, username, old_pass, new_pass):
 def find_user_dn(conf, conn, uid):
     search_filter = conf['search_filter'].replace('{uid}', uid)
     conn.search(conf['base'], "(%s)" % search_filter, SUBTREE)
-
     return conn.response[0]['dn'] if conn.response else None
 
 
 def read_config():
     config = ConfigParser()
     config.read([path.join(BASE_DIR, 'settings.ini'), os.getenv('CONF_FILE', '')])
-
     return config
 
 
@@ -175,4 +177,7 @@ if __name__ == '__main__':
     bottle.run(**CONF['server'])
 # Run bottle in application mode (in production under uWSGI server).
 else:
+    LOG.info("initialize new password validator")
+    pv = PasswordValidator(password_lists=Path("./wordlists/"))
+    LOG.info(f"New password validator initialized with {pv.get_known_passwords_amount()} known passwords.")
     application = bottle.default_app()
