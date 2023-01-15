@@ -2,6 +2,7 @@
 
 import logging
 import os
+import ssl
 from configparser import ConfigParser
 from os import environ, path
 from pathlib import Path
@@ -9,7 +10,7 @@ from pathlib import Path
 import bottle
 from bottle import SimpleTemplate
 from bottle import get, post, static_file, request, route, template
-from ldap3 import Connection, Server
+from ldap3 import Connection, Server, Tls, ALL
 from ldap3 import SIMPLE, SUBTREE
 from ldap3.core.exceptions import LDAPBindError, LDAPConstraintViolationResult, \
     LDAPInvalidCredentialsResult, LDAPUserNameIsMandatoryError, \
@@ -42,13 +43,13 @@ def post_index():
         LOG.info(f"start password validation for user {form('username')}")
         pv = PasswordValidator(password_lists=Path("./wordlists/"))
         pv.validate(form('new-password'))
-        LOG.info(f"password was successfully validated fir user {form('username')}")
+        LOG.info(f"password was successfully validated for user {form('username')}")
 
     except PasswordException as e:
         return error(str(e))
 
     try:
-        change_passwords(form('username'), form('old-password'), form('new-password'))
+        change_password(form('username'), form('old-password'), form('new-password'))
     except Error as e:
         LOG.warning("Unsuccessful attempt to change password for %s: %s" % (form('username'), e))
         return error(str(e))
@@ -68,40 +69,21 @@ def index_tpl(**kwargs):
 
 
 def connect_ldap(conf, **kwargs):
+    tls = Tls(validate=ssl.CERT_REQUIRED, version=ssl.PROTOCOL_TLS, ca_certs_file=conf['ca_cert'])
     server = Server(host=conf['host'],
                     port=conf.getint('port', None),
-                    use_ssl=conf.getboolean('use_ssl', False),
+                    tls=tls,
+                    get_info=ALL,
                     connect_timeout=5)
 
-    return Connection(server, raise_exceptions=True, **kwargs)
+    connection = Connection(server, authentication=SIMPLE, raise_exceptions=True, **kwargs)
+    connection.start_tls()
+    return connection
 
 
-def change_passwords(username, old_pass, new_pass):
-    changed = []
-
-    for key in (key for key in CONF.sections()
-                if key == 'ldap' or key.startswith('ldap:')):
-
-        LOG.debug("Changing password in %s for %s" % (key, username))
-        try:
-            change_password(CONF[key], username, old_pass, new_pass)
-            changed.append(key)
-        except Error as e:
-            for key in reversed(changed):
-                LOG.info("Reverting password change in %s for %s" % (key, username))
-                try:
-                    change_password(CONF[key], username, new_pass, old_pass)
-                except Error as e2:
-                    LOG.error('{}: {!s}'.format(e.__class__.__name__, e2))
-            raise e
-
-
-def change_password(conf, *args):
+def change_password(username, old_pass, new_pass):
     try:
-        if conf.get('type') == 'ad':
-            change_password_ad(conf, *args)
-        else:
-            change_password_ldap(conf, *args)
+        change_password_ldap(CONF["ldap"], username, old_pass, new_pass)
 
     except (LDAPBindError, LDAPInvalidCredentialsResult, LDAPUserNameIsMandatoryError):
         raise Error('Username or password is incorrect!')
@@ -121,23 +103,13 @@ def change_password(conf, *args):
 
 
 def change_password_ldap(conf, username, old_pass, new_pass):
-    with connect_ldap(conf, authentication=SIMPLE, user=conf.get('search_user_dn'),
-                      password=conf.get('search_user_password')) as c:
+    with connect_ldap(conf, user=conf.get('search_user_dn'), password=conf.get('search_user_password')) as c:
         user_dn = find_user_dn(conf, c, username)
 
     # Note: raises LDAPUserNameIsMandatoryError when user_dn is None.
-    with connect_ldap(conf, authentication=SIMPLE, user=user_dn, password=old_pass) as c:
+    with connect_ldap(conf, user=user_dn, password=old_pass) as c:
         c.bind()
         c.extend.standard.modify_password(user_dn, old_pass, new_pass)
-
-
-def change_password_ad(conf, username, old_pass, new_pass):
-    user = username + '@' + conf['ad_domain']
-
-    with connect_ldap(conf, authentication=SIMPLE, user=user, password=old_pass) as c:
-        c.bind()
-        user_dn = find_user_dn(conf, c, username)
-        c.extend.microsoft.modify_password(user_dn, new_pass, old_pass)
 
 
 def find_user_dn(conf, conn, uid):

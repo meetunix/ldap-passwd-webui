@@ -4,7 +4,6 @@ from pathlib import Path
 
 
 class Singleton(type):
-    """Metaclass that makes class a singleton."""
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -24,16 +23,12 @@ class PasswordValidatorException(Exception):
 class PasswordValidator(metaclass=Singleton):
     def __init__(self, min_length: int = 10, max_length=48, password_lists: Path = None):
 
-        self.password_cap = None
-        self.password_low = None
-        self.password_length = None
-        self.known_passwords = set()
-
         if max_length < min_length:
             raise PasswordValidatorException(
                 f"min_length ({min_length}) must be shorter than max_length ({max_length})"
             )
 
+        self.known_passwords = set()
         self.min_length = min_length
         self.max_length = max_length
         self.password_lists = password_lists
@@ -41,8 +36,6 @@ class PasswordValidator(metaclass=Singleton):
         self.__load_password_list()
 
     def validate(self, password: str) -> bool:
-        self.password_length = len(password)
-
         self.__check_length(password)
         self.__check_digits(password)
         self.__check_whitespace(password)

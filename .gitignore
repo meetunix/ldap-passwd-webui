@@ -1,3 +1,4 @@
 /settings.ini
 .idea
 wordlists/*.txt
+root-ca.pem
