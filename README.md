@@ -13,7 +13,7 @@ from [jirutka](https://github.com/jirutka) with a lot of changes.
 4. You must provide a x509v3 root certificate to the app (`ca_cert` in [setting.ini](settings.ini.example). The server
    certificate is verified against this root certificate.
 5. A password validator was implemented, it checks for weak and trivial passphrases. Optionally you can add wordlists to
-   the [wordlists](wordlists/) directory, any new password must not be part of these lists.
+   the [wordlists](wordlists/README.md) directory, any new password must not be part of these lists.
 
 ## Requirements
 
@@ -46,7 +46,9 @@ the [original docs](https://github.com/jirutka/ldap-passwd-webui#run-with-uwsgi-
 This project is licensed under [MIT License](http://opensource.org/licenses/MIT/). For the full text of the license, see
 the [LICENSE](LICENSE) file.
 
+## Screenshot
 
+<p align="center"><img src="doc/screenshot.png" width="400"></p>
 
 
 
