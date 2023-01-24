@@ -23,12 +23,10 @@
         <input id="old-password" name="old-password" type="password" required>
 
         <label for="new-password">New password</label>
-        <input id="new-password" name="new-password" type="password"
-            pattern=".{3,64}" oninvalid="SetCustomValidity('Password must be at least 10 characters long.')" required>
+        <input id="new-password" name="new-password" type="password" minlength="10" maxlength="64" required>
 
         <label for="confirm-password">Confirm new password</label>
-        <input id="confirm-password" name="confirm-password" type="password"
-            pattern=".{3,64}" oninvalid="SetCustomValidity('Password must be at least 10 characters long.')" required>
+        <input id="confirm-password" name="confirm-password" type="password" minlength="10" maxlength="64" required>
 
         <button type="submit">Update password</button>
       </form>
