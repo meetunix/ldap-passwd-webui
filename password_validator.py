@@ -21,7 +21,7 @@ class PasswordValidatorException(Exception):
 
 
 class PasswordValidator(metaclass=Singleton):
-    def __init__(self, min_length: int = 10, max_length=48, password_lists: Path = None):
+    def __init__(self, min_length: int = 14, max_length=64, password_lists: Path = None):
 
         if max_length < min_length:
             raise PasswordValidatorException(
