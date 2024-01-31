@@ -2,3 +2,4 @@
 .idea
 wordlists/*.txt
 root-ca.pem
+.venv
