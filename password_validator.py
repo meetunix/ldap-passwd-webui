@@ -56,13 +56,11 @@ class PasswordValidator(metaclass=Singleton):
             return
 
         for list_path in self.password_lists.iterdir():
-            if str(list_path).endswith('.txt') and list_path.is_file():
-                with open(list_path, "r") as pass_file:
+            if str(list_path).endswith(".txt") and list_path.is_file():
+                with open(list_path, "r", encoding="latin-1") as pass_file:
                     for kp in pass_file:
-                        kp = kp.strip()
-                        kp2 = kp + kp
+                        kp = kp.strip().lower()
                         self.__add_known_password(kp)
-                        self.__add_known_password(kp2)
 
     def __add_trivial_known_passwords(self):
         for alphabet in [string.ascii_lowercase, string.ascii_lowercase[::-1]]:
@@ -73,7 +71,7 @@ class PasswordValidator(metaclass=Singleton):
             ]
 
     def __add_known_password(self, kp: str):
-        if self.min_length <= len(kp) <= self.max_length and not self.__has_whitespace(kp):
+        if len(kp) <= self.max_length and not self.__has_whitespace(kp):
             self.known_passwords.add(kp)
 
     def __check_length(self, password: str):
@@ -95,9 +93,13 @@ class PasswordValidator(metaclass=Singleton):
         if self.__has_whitespace(password):
             raise PasswordException(f"Non printable characters are not allowed in passwords (e.g. whitespace)!")
 
-    def __check_known_password(self, password: str):
-        if password in self.known_passwords:
-            raise PasswordException(f"Password in known password list")
+    def __check_known_password(self, password: str, min_length: int = 5):
+        passwd = password.lower()
+        length = len(passwd)
+        for start in range(length):
+            for end in range(start + min_length, length + 1):
+                if passwd[start:end] in self.known_passwords:
+                    raise PasswordException(f"Password or part of password in well-known lists/dictionaries")
 
     @staticmethod
     def __has_whitespace(password: str) -> bool:
@@ -125,9 +127,9 @@ class PasswordValidator(metaclass=Singleton):
 if __name__ == "__main__":
     try:
         pv = PasswordValidator(password_lists=Path("./wordlists"))
-        password = "passwd123456"
-        pv.validate(password)
+        password_test = "JkplV4vcRKEF8z"
+        pv.validate(password_test)
         print(f"known passwords: {pv.get_known_passwords_amount()}")
-        print(password)
+        print(password_test)
     except PasswordException as e:
         print(e)
